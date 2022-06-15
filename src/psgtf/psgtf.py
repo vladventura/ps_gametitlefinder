@@ -3,7 +3,7 @@ try:
     import importlib.resources as ir
 except ImportError:
     import importlib_resources as ir
-from src import assets
+from . import assets
 
 class PlaystationGame:
     name = ""
