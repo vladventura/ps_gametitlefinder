@@ -1,11 +1,8 @@
 import pandas as pd
-from . import assets
-from .models.PlaystationGame import PlaystationGame
+import requests
+from io import StringIO
 
-try:
-    import importlib.resources as ir
-except ImportError:
-    import importlib_resources as ir
+from .models.PlaystationGame import PlaystationGame
 
 """
 Gets a Playstation Game with the given ID
@@ -38,8 +35,11 @@ def __search_title(id) -> PlaystationGame:
 
 
 def __find_in_platform(id, platform) -> PlaystationGame:
-    file_loc = ir.open_text(assets, f"{platform}_GAMES.tsv")
-    df = pd.read_table(file_loc)
+    # file_loc = ir.open_text(assets, f"{platform}_GAMES.tsv")
+    url = f"http://nopaystation.com/tsv/{platform}_GAMES.tsv"
+    response = requests.get(url)
+    data = response.text
+    df = pd.read_table(StringIO(data))
     for _, row in df.iterrows():
         if row["Title ID"] == id:
             return PlaystationGame(row["Name"], id, platform)
