@@ -50,7 +50,6 @@ def __search_title(id) -> PlaystationGame:
 
 def __find_in_platform_bulk(game_ids) -> "list[PlaystationGame]":
     result = []
-    print(game_ids)
     for k in game_ids:
         data = __get_file(k)
         df = pd.read_table(data)
