@@ -1,6 +1,7 @@
 import os
 from email.utils import formatdate, parsedate_to_datetime
 from datetime import datetime
+from typing import Union
 import pandas as pd
 import requests
 
@@ -9,9 +10,20 @@ from .models.PlaystationGame import PlaystationGame
 """
 Gets a Playstation Game with the given ID
 """
-def find_by_id(game_id) -> PlaystationGame:
-    id = str(game_id).upper()
-    result = __search_title(id)
+def find_by_id(game_id: Union[str, list]) -> PlaystationGame:
+    result = None
+    if type(game_id) is str:
+        id = str(game_id).upper()
+        result = __search_title(id)
+    elif type(game_id) is list:
+        ids = {}
+        for id in game_id:
+            platforms = __check_type_for_known_platforms(id)
+            for platform in platforms:
+                if ids.get(platform) == None:
+                    ids.setdefault(platform, [])
+                ids[platform].append(id)
+        result = __find_in_platform_bulk(ids)
     return result
 
 
@@ -35,6 +47,17 @@ def __search_title(id) -> PlaystationGame:
         if result is not None:
             return result
 
+
+def __find_in_platform_bulk(game_ids) -> "list[PlaystationGame]":
+    result = []
+    print(game_ids)
+    for k in game_ids:
+        data = __get_file(k)
+        df = pd.read_table(data)
+        for _, row in df.iterrows():
+            if row["Title ID"] in game_ids[k]:
+                result.append(PlaystationGame(row["Name"], row["Title ID"], k))
+    return result
 
 def __find_in_platform(id, platform) -> PlaystationGame:
     data = __get_file(platform)
