@@ -1,6 +1,8 @@
+import os
+from email.utils import formatdate, parsedate_to_datetime
+from datetime import datetime
 import pandas as pd
 import requests
-from io import StringIO
 
 from .models.PlaystationGame import PlaystationGame
 
@@ -35,16 +37,34 @@ def __search_title(id) -> PlaystationGame:
 
 
 def __find_in_platform(id, platform) -> PlaystationGame:
-    # file_loc = ir.open_text(assets, f"{platform}_GAMES.tsv")
-    url = f"http://nopaystation.com/tsv/{platform}_GAMES.tsv"
-    response = requests.get(url)
-    data = response.text
-    df = pd.read_table(StringIO(data))
+    data = __get_file(platform)
+    df = pd.read_table(data)
     for _, row in df.iterrows():
         if row["Title ID"] == id:
             return PlaystationGame(row["Name"], id, platform)
     return None
 
+
+def __get_file(platform):
+    headers = {}
+    path = os.path.join(os.path.dirname(__file__), f'{platform}_GAMES.tsv')
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        headers["if-modified-since"] = formatdate(mtime, usegmt=True)
+    response = requests.get(f"http://nopaystation.com/tsv/{platform}_GAMES.tsv", headers=headers, stream=True)
+    response.raise_for_status()
+    if response.status_code == requests.codes.not_modified:
+        return path
+    if response.status_code == requests.codes.ok:
+        with open(path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1048576):
+                f.write(chunk)
+            f.close()
+        if last_modified := response.headers.get("last-modified"):
+            new_mtime = parsedate_to_datetime(last_modified).timestamp()
+            os.utime(path, times=(datetime.now().timestamp(), new_mtime))
+    return path
+        
 
 def __psv_codes(type) -> bool:
     if(
